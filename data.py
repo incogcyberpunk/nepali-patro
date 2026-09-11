@@ -168,9 +168,11 @@ for _y in _YEARS:
     _YEAR_START.append(_total)
     _total += sum(BS_MONTH_DAYS[_y])
 
+# Month names as the source dataset writes them (its metadata.np field), the
+# Sanskritised set rather than the colloquial जेठ/साउन/भदौ forms.
 MONTHS_NE = (
-    "बैशाख", "जेठ", "असार", "साउन", "भदौ", "असोज",
-    "कात्तिक", "मंसिर", "पुष", "माघ", "फागुन", "चैत",
+    "बैशाख", "जेष्ठ", "असार", "श्रावण", "भाद्र", "असोज",
+    "कार्तिक", "मंसिर", "पुष", "माघ", "फाल्गुन", "चैत्र",
 )
 MONTHS_EN = (
     "Baisakh", "Jestha", "Ashar", "Shrawan", "Bhadra", "Asoj",
