@@ -227,8 +227,11 @@ scrolledwindow.events {
 .mode-ad .cell.today,
 .mode-ad button.day:hover .cell.today { background-color: @blue; }
 
-window.dismisser {
+window.dismisser, window.dismisser * {
+    background: none;
     background-color: transparent;
+    background-image: none;
+    box-shadow: none;
 }
 
 /* Tooltips are separate surfaces, so the .frame font rule above never reached

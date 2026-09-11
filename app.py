@@ -227,16 +227,14 @@ class Window(Gtk.ApplicationWindow):
         self.frame.remove_css_class("mode-bs" if self.mode == "AD" else "mode-ad")
         self.frame.add_css_class("mode-bs" if self.mode == "BS" else "mode-ad")
         for mode, knob in self.mode_chips.items():
-            # Latin only here: the knob itself already reads ने / EN, and a
-            # tooltip is a separate surface where script mixing renders poorly.
-            name = "Nepali calendar" if mode == "BS" else "English calendar"
+            name = "नेपाली पात्रो" if mode == "BS" else "English calendar"
             parent = knob.get_parent()
             if mode == self.mode:
                 knob.add_css_class("on")
-                parent.set_tooltip_text(f"{name} — showing now")
+                parent.set_tooltip_text(name)
             else:
                 knob.remove_css_class("on")
-                parent.set_tooltip_text(f"Switch to {name}  (m)")
+                parent.set_tooltip_text(f"{name}  (m)")
         while (child := self.grid.get_first_child()) is not None:
             self.grid.remove(child)
 
@@ -490,6 +488,10 @@ class Dismisser(Gtk.ApplicationWindow):
 
     def __init__(self, app):
         super().__init__(application=app)
+        # GTK gives every window the .background class, and the theme paints it.
+        # Dropping the class is what actually makes this surface see-through;
+        # a CSS override loses to the theme's own window rules.
+        self.remove_css_class("background")
         self.add_css_class("dismisser")
         self.on_dismiss = lambda: None
 
