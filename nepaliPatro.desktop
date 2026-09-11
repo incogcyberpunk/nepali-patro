@@ -1,0 +1,17 @@
+[Desktop Entry]
+Type=Application
+Name=Nepali Patro
+GenericName=Calendar
+Comment=Bikram Sambat and Gregorian calendar with upcoming Nepali events
+Exec=/home/incog/sysScripts/nepaliPatro/patro
+TryExec=/home/incog/sysScripts/nepaliPatro/patro
+Icon=x-office-calendar
+Terminal=false
+Categories=Office;Calendar;
+Keywords=nepali;patro;calendar;bikram;sambat;miti;date;tithi;
+StartupNotify=false
+Actions=Notify;
+
+[Desktop Action Notify]
+Name=Notify today's date
+Exec=/home/incog/sysScripts/nepaliPatro/patro --notify
