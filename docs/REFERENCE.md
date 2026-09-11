@@ -85,6 +85,7 @@ nepaliPatro/
 ├── README.md              overview
 └── docs/
     ├── REFERENCE.md       this file
+    ├── demo.gif           keyboard walkthrough, built from grim frames
     ├── screenshot-bs.png
     └── screenshot-ad.png
 ```
@@ -193,6 +194,16 @@ looking at, matching that mode's today marker, so the mode is never ambiguous.
 | `p` | previous day |
 | `t`, `Home` | back to today, clearing the selection |
 | `m` | switch calendar, same as the slider |
+
+`Tab` walks the controls in the usual GTK way and shows the theme's focus ring.
+Nothing holds that ring when the popup opens, though: GTK focuses the first
+focusable widget on map, and this theme paints focused buttons, so the `‹` arrow
+used to appear permanently pressed. `Window._drop_initial_focus` clears it from
+an idle callback — at map time GTK has not assigned focus yet, so clearing it
+there does nothing. CSS cannot fix this one: overriding `background-color`,
+`background-image`, `box-shadow` and `outline` on `.nav:focus`, and even
+`window.patro button.nav`, all left the pill in place, confirmed with a
+red-background probe that never showed up on screen.
 
 Month and day movement respect the active calendar: `h`/`l` step BS months in
 Nepali mode and Gregorian months in English mode. Movement stops silently at
@@ -384,6 +395,9 @@ All appearance lives in `style.css`, loaded at startup and applied at
 | `tooltip, tooltip label` | tooltips, which are separate surfaces and need their own font rule |
 
 ### Two GTK traps encoded in that file
+
+A third one, the focus ring on the `‹` arrow, could not be solved in CSS at all
+and lives in `app.py` instead — see [§5](#keyboard).
 
 1. **Day state is painted on an inner `Gtk.Box`, not on the button.** A themed
    GTK button paints its own `background-image`, which covers any

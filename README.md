@@ -1,59 +1,72 @@
 <div align="center">
 
-# नेपाली पात्रो · nepaliPatro
+# नेपाली पात्रो
 
-**A Bikram Sambat + Gregorian calendar popup for Wayland, with the next Nepali festivals built in.**
+### nepaliPatro
 
-Click your bar clock, get both calendars and what's coming. Click again, it's gone.
+**Bikram Sambat and Gregorian, in one popup, with the next Nepali festivals underneath.**
 
-![GTK4](https://img.shields.io/badge/GTK-4-4A86CF?logo=gtk&logoColor=white)
-![Wayland](https://img.shields.io/badge/Wayland-layer--shell-FFB300?logo=wayland&logoColor=black)
-![Python](https://img.shields.io/badge/Python-stdlib%20only-3776AB?logo=python&logoColor=white)
-![pip deps](https://img.shields.io/badge/pip%20dependencies-0-success)
-![Cold start](https://img.shields.io/badge/cold%20start-~350%20ms-brightgreen)
-![Toggle](https://img.shields.io/badge/toggle-8%20ms-brightgreen)
-![Checks](https://img.shields.io/badge/self--check-46%2C022%20days%20round--tripped-blueviolet)
+Click your bar clock. Click it again and it's gone.
 
-<img src="docs/screenshot-bs.png" width="45%" alt="Nepali calendar mode: Bhadra 2083 grid with Gregorian day numbers underneath and an upcoming festivals pane"> <img src="docs/screenshot-ad.png" width="45%" alt="English calendar mode: September 2026 grid with Bikram Sambat day numbers underneath">
+<br>
 
-*Nepali mode (mauve accent) and English mode (blue accent) — one slider apart.*
+<img src="docs/demo.gif" width="380" alt="The popup stepping through days, months, and switching between the Nepali and English calendars">
+
+<sub>Real keystrokes, real render: `n` steps a day, `l`/`h` move months, `m` flips calendar, `t` returns to today.</sub>
+
+<br>
+
+<a href="#install"><img src="https://img.shields.io/badge/GTK-4-4A86CF?logo=gtk&logoColor=white" alt="GTK 4"></a>
+<a href="#install"><img src="https://img.shields.io/badge/Wayland-layer--shell-FFB300?logo=wayland&logoColor=black" alt="Wayland layer-shell"></a>
+<a href="#install"><img src="https://img.shields.io/badge/pip%20dependencies-none-3776AB?logo=python&logoColor=white" alt="No pip dependencies"></a>
+<a href="#fast-and-measured"><img src="https://img.shields.io/badge/cold%20open-~350%20ms-3ddc84" alt="Cold open ~350 ms"></a>
+<a href="#fast-and-measured"><img src="https://img.shields.io/badge/toggle-8%20ms-3ddc84" alt="Toggle 8 ms"></a>
+<a href="#checked-not-assumed"><img src="https://img.shields.io/badge/self--check-46%2C022%20days-b4befe" alt="46,022 days round-tripped"></a>
 
 </div>
 
 ---
 
-## Why this exists
-
 Nepal runs on Bikram Sambat, your laptop runs on Gregorian, and every festival
-date lives in the gap between them. This puts both grids in one popup, tells you
-what `भोलि` holds, and never asks you to open a browser to find out when Dashain
+date lives in the gap between the two. This puts both grids in one place, tells
+you what `भोलि` holds, and never sends you to a browser to find out when Dashain
 starts.
 
-## What it does
+<table>
+<tr>
+<td width="50%"><img src="docs/screenshot-bs.png" alt="Nepali calendar mode showing Bhadra 2083"></td>
+<td width="50%"><img src="docs/screenshot-ad.png" alt="English calendar mode showing September 2026"></td>
+</tr>
+<tr>
+<td align="center"><b>Nepali mode</b> — BS grid, Gregorian numerals below, mauve accent</td>
+<td align="center"><b>English mode</b> — Gregorian grid, BS numerals below, blue accent</td>
+</tr>
+</table>
 
-🗓️ **Both calendars, either way round.** Nepali mode gives you the BS month with
-Gregorian numbers underneath; English mode flips it. The weekday header switches
-script too.
+## What you get
 
-🎉 **Upcoming festivals, right there.** Eight scrollable rows of what's next,
-with `आज` / `भोलि` / `+N` day counts. Click a row and the grid jumps to it.
+**Both calendars, either way round.** Nepali mode draws the BS month with
+Gregorian day numbers underneath; English mode flips it. The weekday header
+changes script with it.
 
-🎨 **Colour that means something.** Red is a day off — weekend or holiday. Peach
-means something's happening but you're still working. The filled pill is today,
-mauve or blue depending on which calendar you're reading.
+**Upcoming festivals in the same window.** Eight scrollable rows of what is
+next, counted in `आज` / `भोलि` / `+N`. Click one and the grid jumps to that day.
 
-🌙 **Tithi and event names** in the detail line and in every day's tooltip.
+**Colour that carries meaning.** Red is a day off, weekend or holiday. Peach
+means something is happening but you are still working. The filled pill is
+today, tinted to match whichever calendar you are reading.
 
-⌨️ **Keyboard driven.** `h`/`l` for months, `n`/`p` for days, `t` for today, `m`
-to flip calendars, `q` to go away.
+**Tithi and event names** in the detail line, and in every day's tooltip.
 
-📴 **Works offline.** Events cache to disk on first fetch; date conversion is
-100% local and needs no network, ever. Nothing blocks on the wire — the grid
-paints instantly and events fill in behind it.
+**Keyboard first.** `h`/`l` for months, `n`/`p` for days, `t` for today, `m` to
+flip calendars, `q` to dismiss.
 
-🪶 **Zero pip packages.** Standard library plus system GTK. Nothing to break the
-next time Python bumps a minor version — which is exactly why the old version
-died.
+**Offline by default.** Date conversion is entirely local and needs no network,
+ever. Festival data caches to disk on first fetch, and nothing blocks on the
+wire: the grid paints instantly, events fill in behind it.
+
+**No pip packages.** Standard library plus system GTK, which is exactly why the
+version before this one died when Python 3.14 landed.
 
 ## Install
 
@@ -61,14 +74,19 @@ died.
 sudo pacman -S --needed gtk4 python-gobject gtk4-layer-shell noto-fonts libnotify
 
 git clone https://github.com/incogcyberpunk/System-Scripts.git ~/sysScripts
-~/sysScripts/nepaliPatro/patro --check   # prove it works
-~/sysScripts/nepaliPatro/patro           # open it
+~/sysScripts/nepaliPatro/patro --check    # prove the dates are right
+~/sysScripts/nepaliPatro/patro            # open it
 ```
 
-Needs a compositor that speaks `wlr-layer-shell` — Hyprland, sway, river, niri.
-Not GNOME.
+Needs a compositor that speaks `wlr-layer-shell`: Hyprland, sway, river, niri.
+GNOME does not implement it.
 
-### Wire it to your bar
+<details>
+<summary><b>Wire it to waybar, Hyprland and your shell</b></summary>
+
+<br>
+
+Clock module in `~/.config/waybar/modules.json`:
 
 ```json
 "clock": {
@@ -79,11 +97,34 @@ Not GNOME.
 }
 ```
 
-Then a desktop entry, if you want it in your launcher:
+`"tooltip": false` matters, or waybar's own hover tooltip floats over the popup.
+
+Today's date as a login notification, in `~/.config/hypr/conf/autostart.lua`:
+
+```lua
+hl.exec_cmd("~/sysScripts/nepaliPatro/patro --notify")
+```
+
+A keybind, in `~/.config/hypr/conf/keybindings/appKeybinds.lua`:
+
+```lua
+hl.bind("SUPER + C", hl.dsp.exec_cmd("~/sysScripts/nepaliPatro/patro"))
+```
+
+Shell aliases:
+
+```bash
+alias nepdate='~/sysScripts/nepaliPatro/patro --today'
+alias patro='~/sysScripts/nepaliPatro/patro'
+```
+
+App launcher entry:
 
 ```bash
 ln -sf ~/sysScripts/nepaliPatro/nepaliPatro.desktop ~/.local/share/applications/
 ```
+
+</details>
 
 ## Use it
 
@@ -92,12 +133,12 @@ ln -sf ~/sysScripts/nepaliPatro/nepaliPatro.desktop ~/.local/share/applications/
 | `q` `Esc` | close | `n` | next day |
 | `h` `←` | previous month | `p` | previous day |
 | `l` `→` | next month | `t` `Home` | back to today |
-| `m` | switch calendar | | |
+| `m` | switch calendar | `Tab` | walk the controls |
 
-Click a day to pin the detail line to it. Click an event row to jump there.
-Click anywhere outside to dismiss.
+Click a day to pin the detail line to it, click it again to release. Click an
+event row to jump there. Click anywhere outside to dismiss.
 
-## Also a CLI
+## Also a date tool
 
 ```console
 $ patro --today
@@ -109,30 +150,33 @@ $ patro --upcoming 4
            २८ भाद्र २०८३    2d  दरखाने दिन
            २९ भाद्र २०८३    3d  हरितालिका व्रत, तीज(महिला कर्मचारीहरूको लागि मात्र बिदा)
 
-$ patro --notify     # today's date as a desktop notification
+$ patro --notify
 ```
 
-`*` marks a holiday. Add `--offline` to any of them to stay off the network.
+`*` marks a holiday. Append `--offline` to any of them to stay off the network.
 
 ## Fast, and measured
 
 | | |
 |---|---|
-| open (cold process) | **~350 ms** to first frame |
-| close, or toggle an open popup | **8 ms** — the launcher delivers it over D-Bus instead of starting Python |
-| resident memory while open | 90 MB |
+| Cold open, process start to first frame | **~350 ms** |
+| Toggling an open popup shut | **8 ms** |
+| Resident memory while open | 90 MB |
 
-Three things got it there, each one measured rather than guessed: lazy imports
-in `data.py` (`import data` went 92 ms → 28 ms), GTK's **cairo** renderer, which
-beats both `gl` (441 ms) and `vulkan` (521 ms) because a small short-lived popup
-is all first-frame latency, and a `gdbus` fast path so closing doesn't spawn a
-second interpreter to say one word.
+Three changes got it there, each one profiled rather than guessed. Lazy imports
+in `data.py` took `import data` from 92 ms to 28 ms, because the paint path has
+no use for `urllib`, `argparse`, `subprocess` or `tempfile`. GTK's **cairo**
+renderer beat both GPU renderers — 347 ms against 441 for `gl` and 521 for
+`vulkan` — since a small, short-lived surface is all first-frame latency, and
+building a GL context costs more than hardware drawing saves. And a `gdbus` fast
+path means closing no longer starts a second interpreter just to deliver one
+message.
 
-The full profile — including why a C rewrite would only buy ~90 ms, and where
-the remaining 55 ms of `asyncio` comes from — is in
+The full profile, including why a C rewrite would only buy back ~90 ms and where
+the remaining 55 ms of `asyncio` comes from, is in
 [docs/REFERENCE.md §11](docs/REFERENCE.md#11-performance).
 
-## Verified, not vibed
+## Checked, not assumed
 
 ```console
 $ patro --check
@@ -150,41 +194,43 @@ nepaliPatro selfcheck
 ok — today is २६ भाद्र २०८३ / 2026-09-11
 ```
 
-Every day in the vendored table round-trips, and 3,287 independently published
-`ad`/`bs` pairs agree with it exactly. Two dataset years are quarantined with
-reasons — one of them contradicts itself, one contradicts two other sources.
+Every day in the vendored month table round-trips, and 3,287 independently
+published `ad`/`bs` pairs agree with it exactly. Two dataset years are
+quarantined with stated reasons: one contradicts itself, one contradicts two
+other sources.
 
 ## Honest limits
 
-- **Date conversion works until 12 April 2044** (end of BS 2100), then raises
-  rather than guessing. Month lengths aren't computable — they're published per
-  year, so the table has an end.
-- **Festival data currently ends at BS 2083** (~April 2027). Both upstreams stop
-  there; they publish yearly. When it runs out, the calendar keeps working and
-  the events pane just goes quiet.
+- Date conversion runs out on **12 April 2044**, the end of BS 2100. Month
+  lengths are published per year, not computed, so the table has an end — and
+  past it the code raises rather than guessing.
+- Festival data currently ends at **BS 2083**, around April 2027. Both upstreams
+  stop there and publish yearly. When it runs out the calendar keeps working and
+  the events pane simply goes quiet.
 - Weekend red and holiday red are the same red.
 - The invisible click-catcher swallows the first click you make elsewhere.
+- Every open is a fresh process, hence the 350 ms.
 
-## Under the hood
+## How it fits together
 
-`patro` dispatches · `app.py` draws · `data.py` converts and fetches ·
-`selfcheck.py` proves it · `style.css` themes it.
+`patro` dispatches, `app.py` draws, `data.py` converts and fetches,
+`selfcheck.py` proves it, `style.css` themes it.
 
-Two layer surfaces (the calendar, plus a transparent fullscreen click catcher),
-one D-Bus name for the toggle, events cached in `~/.cache/nepaliPatro`, chosen
-calendar remembered in `~/.config/nepaliPatro/state`.
+Two layer surfaces — the calendar and a transparent fullscreen click catcher —
+one D-Bus name carrying the toggle, events cached in `~/.cache/nepaliPatro`, and
+your chosen calendar remembered in `~/.config/nepaliPatro/state`.
 
-📖 **[Full reference documentation →](docs/REFERENCE.md)** — architecture, the
-conversion algorithm, event schema, every CSS class, GTK traps, performance
-data, troubleshooting, and the design decisions with their rejected
-alternatives.
+**[Full reference documentation](docs/REFERENCE.md)** covers the conversion
+algorithm and its anchor date, the event schema and cache policy, every CSS
+class, the GTK traps behind several non-obvious lines, the performance data,
+troubleshooting, extension points, and the design decisions with the
+alternatives that were rejected.
 
 ## Credits
 
-Month-length table from [`amitgaru/nepali-datetime`](https://github.com/amitgaru/nepali-datetime)
-(Apache-2.0). Festival data from
-[`S4NKALP/nepali-calendar-api`](https://github.com/S4NKALP/nepali-calendar-api)
-(MIT) with [`sajanm/nepali-lunar-calendar-events`](https://github.com/sajanm/nepali-lunar-calendar-events)
-as fallback and validation oracle. Colours are
+Month-length table from [amitgaru/nepali-datetime](https://github.com/amitgaru/nepali-datetime)
+(Apache-2.0). Festival data from [S4NKALP/nepali-calendar-api](https://github.com/S4NKALP/nepali-calendar-api)
+(MIT), with [sajanm/nepali-lunar-calendar-events](https://github.com/sajanm/nepali-lunar-calendar-events)
+as fallback and as the oracle that validates the table. Colours are
 [Catppuccin](https://github.com/catppuccin/catppuccin) Mocha. Event data is
 fetched and cached at runtime, never redistributed here.
