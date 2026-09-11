@@ -12,14 +12,15 @@ derived from a formula, so every implementation ships this table.
 
 from __future__ import annotations
 
-import argparse
 import bisect
 import datetime
 import json
 import os
-import subprocess
-import tempfile
-import urllib.request
+
+# argparse, subprocess, tempfile and urllib.request are imported where they are
+# used, not here. Together they cost ~85 ms of the ~92 ms this module takes to
+# import, and the popup's paint path touches none of them: it reads cached JSON
+# and converts dates. The CLI and the background fetch pay for them instead.
 
 # --- calendar table -------------------------------------------------------
 
@@ -290,6 +291,8 @@ def _read_cache(path: str, _url: str):
 
 
 def _download(path: str, url: str):
+    import urllib.request
+
     try:
         with urllib.request.urlopen(url, timeout=TIMEOUT) as response:
             payload = response.read()
@@ -297,6 +300,8 @@ def _download(path: str, url: str):
     except Exception:
         return None
     try:  # cache write is best effort; atomic so a crash cannot leave a stub
+        import tempfile
+
         os.makedirs(CACHE_DIR, exist_ok=True)
         fd, tmp = tempfile.mkstemp(dir=CACHE_DIR)
         with os.fdopen(fd, "wb") as handle:
@@ -427,6 +432,8 @@ def _today_line() -> str:
 
 
 def main() -> None:
+    import argparse
+
     parser = argparse.ArgumentParser(description="Nepali date and event lookup")
     parser.add_argument("--today", action="store_true", help="print today in BS and AD")
     parser.add_argument("--upcoming", type=int, nargs="?", const=8, metavar="N",
@@ -436,6 +443,8 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.notify:
+        import subprocess
+
         body = _today_line()
         events = upcoming(1, offline=args.offline)
         if events and events[0]["in_days"] == 0:

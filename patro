@@ -16,6 +16,12 @@ case "${1:-}" in
         exec python3 "$here/selfcheck.py"
         ;;
     *)
+        # Skip GTK's Vulkan attempt. This machine has Intel graphics but the only
+        # installed Vulkan driver is nvidia's (nvidia-utils, pulled in by
+        # hyprland), so the probe always fails and falls back to GL anyway,
+        # costing ~250 ms of the startup. Delete this line after installing
+        # vulkan-intel, which fixes the probe properly and for every GTK4 app.
+        export GSK_RENDERER=gl
         exec python3 "$here/app.py" "$@"
         ;;
 esac
