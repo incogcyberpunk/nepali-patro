@@ -226,3 +226,7 @@ scrolledwindow.events {
 .mode-bs button.day:hover .cell.today { background-color: @mauve; }
 .mode-ad .cell.today,
 .mode-ad button.day:hover .cell.today { background-color: @blue; }
+
+window.dismisser {
+    background-color: transparent;
+}

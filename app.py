@@ -4,6 +4,8 @@
 A gtk4-layer-shell surface anchored under waybar. Launch it again while it is
 open and it closes, so a single waybar click can toggle it.
 
+Dismiss: Escape, a click anywhere outside it, or clicking the launcher again.
+Moving the pointer away deliberately does not close it.
 Keys: Escape close · Left/Right or h/l month · t today · m switch calendar
 """
 
@@ -36,9 +38,9 @@ STATE_FILE = os.path.join(
     os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")),
     "nepaliPatro", "state",
 )
-MARGIN_TOP = 6      # clears waybar
-UPCOMING = 8        # rows in the events pane
-WEEKEND = (0, 6)    # Sunday and Saturday are both holidays in Nepal
+MARGIN_TOP = 6           # clears waybar
+UPCOMING = 8             # rows in the events pane
+WEEKEND = (0, 6)         # Sunday and Saturday are both holidays in Nepal
 
 
 def load_mode() -> str:
@@ -70,7 +72,12 @@ class Window(Gtk.ApplicationWindow):
         LayerShell.set_layer(self, LayerShell.Layer.TOP)
         LayerShell.set_anchor(self, LayerShell.Edge.TOP, True)
         LayerShell.set_margin(self, LayerShell.Edge.TOP, MARGIN_TOP)
-        LayerShell.set_keyboard_mode(self, LayerShell.KeyboardMode.ON_DEMAND)
+        # EXCLUSIVE, not ON_DEMAND: with focus_follows_mouse the pointer crosses
+        # other windows on its way down from the bar, and an ON_DEMAND surface
+        # loses keyboard focus to whatever it passes over, which used to dismiss
+        # the popup mid-travel. Holding focus also makes Escape and the arrow
+        # keys work without clicking the popup first.
+        LayerShell.set_keyboard_mode(self, LayerShell.KeyboardMode.EXCLUSIVE)
 
         self.today_ad = datetime.date.today()
         self.today_bs = data.bs_from_ad(self.today_ad)
@@ -81,10 +88,14 @@ class Window(Gtk.ApplicationWindow):
         self._months = {}       # (bs year, bs month) -> events dict
         self._pending = set()   # keys currently being fetched
 
+        # Dismiss guards. A layer-shell surface has no xdg-toplevel, so GTK's
+        # is-active is never true for it and is useless as a focus signal, and
+        # pointer crossing events proved unreliable. Dismissal is therefore
+        # explicit: Escape, clicking the clock again, or clicking outside the
+        # popup, which the transparent Dismisser layer below us catches.
         keys = Gtk.EventControllerKey()
         keys.connect("key-pressed", self.on_key)
         self.add_controller(keys)
-        self.connect("notify::is-active", self.on_active_changed)
 
         self.build_ui()
         self.render()
@@ -469,15 +480,39 @@ class Window(Gtk.ApplicationWindow):
             return False
         return True
 
-    def on_active_changed(self, *_args):
-        if not self.is_active():
-            self.close()
+
+class Dismisser(Gtk.ApplicationWindow):
+    """Invisible fullscreen layer under the popup: a click on it dismisses.
+
+    This is how dropdowns behave everywhere, and unlike focus or hover it is a
+    signal the compositor delivers reliably.
+    """
+
+    def __init__(self, app):
+        super().__init__(application=app)
+        self.add_css_class("dismisser")
+        self.on_dismiss = lambda: None
+
+        LayerShell.init_for_window(self)
+        LayerShell.set_namespace(self, "nepaliPatro-dismiss")
+        LayerShell.set_layer(self, LayerShell.Layer.TOP)
+        for edge in (LayerShell.Edge.TOP, LayerShell.Edge.BOTTOM,
+                     LayerShell.Edge.LEFT, LayerShell.Edge.RIGHT):
+            LayerShell.set_anchor(self, edge, True)
+        LayerShell.set_keyboard_mode(self, LayerShell.KeyboardMode.NONE)
+
+        click = Gtk.GestureClick()
+        click.set_button(0)  # any button
+        click.connect("pressed", lambda *_a: self.on_dismiss())
+        self.add_controller(click)
 
 
 class Patro(Gtk.Application):
     def __init__(self):
         super().__init__(application_id=APP_ID,
                          flags=Gio.ApplicationFlags.DEFAULT_FLAGS)
+        self.popup = None
+        self.catcher = None
 
     def do_startup(self):
         Gtk.Application.do_startup(self)
@@ -491,11 +526,27 @@ class Patro(Gtk.Application):
             )
 
     def do_activate(self):
-        existing = self.props.active_window
-        if existing is not None:   # launched again while open: toggle off
-            existing.close()
+        if getattr(self, "popup", None) is not None:  # launched again: toggle off
+            self.dismiss()
             return
-        Window(self).present()
+        # Map the catcher first so the popup ends up above it.
+        self.catcher = Dismisser(self)
+        self.catcher.on_dismiss = self.dismiss
+        self.catcher.present()
+        self.popup = Window(self)
+        self.popup.connect("close-request", self.on_popup_closed)
+        self.popup.present()
+
+    def dismiss(self):
+        if self.popup is not None:
+            self.popup.close()
+
+    def on_popup_closed(self, *_args):
+        self.popup = None
+        if self.catcher is not None:
+            self.catcher.close()
+            self.catcher = None
+        return False
 
 
 def main() -> int:

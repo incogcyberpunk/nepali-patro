@@ -176,7 +176,7 @@ MONTHS_EN = (
     "Baisakh", "Jestha", "Ashar", "Shrawan", "Bhadra", "Asoj",
     "Kartik", "Mangsir", "Poush", "Magh", "Falgun", "Chait",
 )
-WEEKDAYS_NE = ("आइत", "सोम", "मंगल", "बुध", "बिहि", "शुक्र", "शनि")
+WEEKDAYS_NE = ("आइत", "सोम", "मंगल", "बुध", "बिही", "शुक्र", "शनि")
 WEEKDAYS_EN = ("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
 
 _NE_DIGITS = "०१२३४५६७८९"
