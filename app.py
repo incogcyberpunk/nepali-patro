@@ -100,6 +100,18 @@ class Window(Gtk.ApplicationWindow):
         self.build_ui()
         self.render()
 
+        # GTK focuses the first focusable widget when the popup maps, and this
+        # theme paints focused buttons: the ‹ arrow came up wearing a grey pill,
+        # which read as "pressed". CSS could not override it, but clearing the
+        # focus can — from an idle callback, because at map time GTK has not
+        # assigned it yet. Tab still works and still shows a focus ring; the
+        # popup just does not open with one already on.
+        self.connect("map", lambda _w: GLib.idle_add(self._drop_initial_focus))
+
+    def _drop_initial_focus(self):
+        self.set_focus(None)
+        return GLib.SOURCE_REMOVE
+
     # --- layout ---------------------------------------------------------
 
     def build_ui(self):
