@@ -119,10 +119,35 @@ def check_events():
     print(f"  events: current month {state}, upcoming() returned {len(events)} (offline)")
 
 
+def check_day_step():
+    """n/p day stepping must cross month boundaries and stop at the table edge."""
+    try:
+        import types
+        import app
+    except Exception as error:  # no GTK on this box: data checks still stand
+        print(f"  day step: SKIPPED ({error})")
+        return
+    stub = types.SimpleNamespace(selected=None, today_bs=(2083, 5, 31),
+                                 cursor_bs=[2083, 5], cursor_ad=[2026, 9],
+                                 render=lambda: None)
+    app.Window.step_day(stub, 1)
+    assert stub.selected == (2083, 6, 1), f"forward step landed on {stub.selected}"
+    assert stub.cursor_bs == [2083, 6], "the grid must follow the day into the next month"
+    app.Window.step_day(stub, -1)
+    assert stub.selected == (2083, 5, 31), f"backward step landed on {stub.selected}"
+    assert stub.cursor_bs == [2083, 5], "the grid must follow the day back"
+    edge = (data.MAX_BS_YEAR, 12, data.days_in_bs_month(data.MAX_BS_YEAR, 12))
+    stub.selected = edge
+    app.Window.step_day(stub, 1)
+    assert stub.selected == edge, "stepping past the table end must be a no-op"
+    print("  day step: n/p cross month boundaries both ways and stop at the table edge")
+
+
 def main():
     print("nepaliPatro selfcheck")
     for check in (check_table, check_anchor, check_roundtrip, check_grid,
-                  check_out_of_range, check_against_dataset, check_events):
+                  check_out_of_range, check_against_dataset, check_events,
+                  check_day_step):
         check()
     print(f"ok — today is {data.format_bs(data.today_bs())} "
           f"/ {datetime.date.today().isoformat()}")

@@ -6,7 +6,7 @@ open and it closes, so a single waybar click can toggle it.
 
 Dismiss: Escape or q, a click anywhere outside it, or clicking the launcher again.
 Moving the pointer away deliberately does not close it.
-Keys: Escape/q close · Left/Right or h/l month · t today · m switch calendar
+Keys: Escape/q close · Left/Right or h/l month · n/p day · t today · m switch calendar
 """
 
 from ctypes import CDLL
@@ -429,6 +429,19 @@ class Window(Gtk.ApplicationWindow):
             self.cursor_ad = [year, month]
         self.render()
 
+    def step_day(self, delta):
+        """Move the selected day by one, following it into the next month."""
+        base = self.selected or self.today_bs
+        try:
+            ad = data.ad_from_bs(*base) + datetime.timedelta(days=delta)
+            bs = data.bs_from_ad(ad)
+        except (data.DateOutOfRange, OverflowError):
+            return
+        self.selected = bs
+        self.cursor_bs = [bs[0], bs[1]]
+        self.cursor_ad = [ad.year, ad.month]
+        self.render()
+
     def go_today(self):
         self.cursor_bs = [self.today_bs[0], self.today_bs[1]]
         self.cursor_ad = [self.today_ad.year, self.today_ad.month]
@@ -471,6 +484,10 @@ class Window(Gtk.ApplicationWindow):
             self.shift(1)
         elif keyval in (Gdk.KEY_t, Gdk.KEY_Home):
             self.go_today()
+        elif keyval == Gdk.KEY_n:
+            self.step_day(1)
+        elif keyval == Gdk.KEY_p:
+            self.step_day(-1)
         elif keyval == Gdk.KEY_m:
             self.toggle_mode()
         else:
