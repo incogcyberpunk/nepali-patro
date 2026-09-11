@@ -230,3 +230,10 @@ scrolledwindow.events {
 window.dismisser {
     background-color: transparent;
 }
+
+/* Tooltips are separate surfaces, so the .frame font rule above never reached
+   them and Devanagari fell back to whatever font came first. */
+tooltip, tooltip label {
+    font-family: "Noto Sans Devanagari", "JetBrainsMono Nerd Font", sans-serif;
+    font-size: 11px;
+}
