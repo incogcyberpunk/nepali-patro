@@ -16,14 +16,23 @@ case "${1:-}" in
         exec python3 "$here/selfcheck.py"
         ;;
     *)
-        # Pin the GL renderer. Now that vulkan-intel is installed GTK's default
-        # choice is Vulkan and it works, but it costs ~130 ms more to the first
-        # frame on this Iris Xe than GL does, even with a warm
-        # ~/.cache/gtk-4.0/vulkan-pipeline-cache: 520 ms vs 390 ms, medians over
-        # five interleaved runs. A popup that lives a few seconds is all
-        # first-frame latency and no sustained drawing, so GL wins here. Drop
-        # this line if that ever stops being true.
-        export GSK_RENDERER=gl
+        # An instance already up? Hand it the toggle over the bus in ~26 ms
+        # instead of starting a whole second Python+GTK just to deliver the
+        # message and exit, which is what clicking the clock to close used to
+        # cost. When nothing owns the name the call fails in ~10 ms, which is
+        # the only overhead added to the open path.
+        if [ $# -eq 0 ] && gdbus call --session --dest np.nepaliPatro \
+                --object-path /np/nepaliPatro \
+                --method org.gtk.Application.Activate '{}' >/dev/null 2>&1; then
+            exit 0
+        fi
+        # Cairo, GTK's software renderer, beats both GPU renderers here:
+        # 347 ms to first frame against 441 for gl and 521 for vulkan, medians
+        # over six interleaved runs, and 90 MB RSS instead of 175 MB. A 430x683
+        # popup that lives a few seconds is all first-frame latency, and skipping
+        # GL context creation and shader setup is worth more than hardware
+        # drawing saves. Screenshots under all three are indistinguishable.
+        export GSK_RENDERER=cairo
         exec python3 "$here/app.py" "$@"
         ;;
 esac
