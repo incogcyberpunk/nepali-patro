@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# nepaliPatro launcher.
+#   patro                 toggle the calendar popup (run again to close it)
+#   patro --today         print today's date in BS and AD
+#   patro --upcoming [N]  print the next N Nepali events
+#   patro --notify        send today's date as a notification
+set -euo pipefail
+
+here="$(dirname "$(readlink -f "$0")")"
+
+case "${1:-}" in
+    --today | --upcoming | --notify | --offline)
+        exec python3 "$here/data.py" "$@"
+        ;;
+    --check)
+        exec python3 "$here/selfcheck.py"
+        ;;
+    *)
+        exec python3 "$here/app.py" "$@"
+        ;;
+esac
