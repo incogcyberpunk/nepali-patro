@@ -16,11 +16,13 @@ case "${1:-}" in
         exec python3 "$here/selfcheck.py"
         ;;
     *)
-        # Skip GTK's Vulkan attempt. This machine has Intel graphics but the only
-        # installed Vulkan driver is nvidia's (nvidia-utils, pulled in by
-        # hyprland), so the probe always fails and falls back to GL anyway,
-        # costing ~250 ms of the startup. Delete this line after installing
-        # vulkan-intel, which fixes the probe properly and for every GTK4 app.
+        # Pin the GL renderer. Now that vulkan-intel is installed GTK's default
+        # choice is Vulkan and it works, but it costs ~130 ms more to the first
+        # frame on this Iris Xe than GL does, even with a warm
+        # ~/.cache/gtk-4.0/vulkan-pipeline-cache: 520 ms vs 390 ms, medians over
+        # five interleaved runs. A popup that lives a few seconds is all
+        # first-frame latency and no sustained drawing, so GL wins here. Drop
+        # this line if that ever stops being true.
         export GSK_RENDERER=gl
         exec python3 "$here/app.py" "$@"
         ;;
