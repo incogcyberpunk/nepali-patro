@@ -4,9 +4,9 @@
 A gtk4-layer-shell surface anchored under waybar. Launch it again while it is
 open and it closes, so a single waybar click can toggle it.
 
-Dismiss: Escape, a click anywhere outside it, or clicking the launcher again.
+Dismiss: Escape or q, a click anywhere outside it, or clicking the launcher again.
 Moving the pointer away deliberately does not close it.
-Keys: Escape close · Left/Right or h/l month · t today · m switch calendar
+Keys: Escape/q close · Left/Right or h/l month · t today · m switch calendar
 """
 
 from ctypes import CDLL
@@ -464,7 +464,7 @@ class Window(Gtk.ApplicationWindow):
         self.render()
 
     def on_key(self, _controller, keyval, _code, _state):
-        if keyval == Gdk.KEY_Escape:
+        if keyval in (Gdk.KEY_Escape, Gdk.KEY_q):
             self.close()
         elif keyval in (Gdk.KEY_Left, Gdk.KEY_h):
             self.shift(-1)
