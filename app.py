@@ -263,7 +263,6 @@ class Window(Gtk.ApplicationWindow):
         first = data.ad_from_bs(year, month, 1)
         last = data.ad_from_bs(year, month, data.days_in_bs_month(year, month))
         self.subtitle.set_label(
-            f"{data.MONTHS_EN[month - 1]} {year} · "
             f"{first.strftime('%d %b')} – {last.strftime('%d %b %Y')}"
         )
 
