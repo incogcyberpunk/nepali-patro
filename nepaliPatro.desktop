@@ -1,10 +1,13 @@
 [Desktop Entry]
+# Exec and TryExec below carry a placeholder, not a real path: .desktop files
+# expand neither ~ nor variables, so it is substituted at install time. The
+# README gives the one-line sed.
 Type=Application
 Name=Nepali Patro
 GenericName=Calendar
 Comment=Bikram Sambat and Gregorian calendar with upcoming Nepali events
-Exec=/home/incog/sysScripts/nepaliPatro/patro
-TryExec=/home/incog/sysScripts/nepaliPatro/patro
+Exec=@PATRO@
+TryExec=@PATRO@
 Icon=x-office-calendar
 Terminal=false
 Categories=Office;Calendar;
@@ -14,4 +17,4 @@ Actions=Notify;
 
 [Desktop Action Notify]
 Name=Notify today's date
-Exec=/home/incog/sysScripts/nepaliPatro/patro --notify
+Exec=@PATRO@ --notify
