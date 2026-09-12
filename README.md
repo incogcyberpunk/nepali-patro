@@ -2,7 +2,7 @@
 
 # नेपाली पात्रो
 
-### nepaliPatro
+### nepali-patro
 
 **Bikram Sambat and Gregorian, in one popup, with the next Nepali festivals underneath.**
 
@@ -23,6 +23,7 @@ Click your bar clock. Click it again and it's gone.
 <a href="#fast-and-measured"><img src="https://img.shields.io/badge/cold%20open-~350%20ms-3ddc84" alt="Cold open ~350 ms"></a>
 <a href="#fast-and-measured"><img src="https://img.shields.io/badge/toggle-8%20ms-3ddc84" alt="Toggle 8 ms"></a>
 <a href="#checked-not-assumed"><img src="https://img.shields.io/badge/self--check-46%2C022%20days-b4befe" alt="46,022 days round-tripped"></a>
+<a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0-A42E2B" alt="GPL-3.0 licensed"></a>
 
 </div>
 
@@ -90,7 +91,7 @@ on Wayland.
 Then:
 
 ```bash
-git clone https://github.com/incogcyberpunk/nepaliPatro.git ~/nepaliPatro
+git clone https://github.com/incogcyberpunk/nepali-patro.git ~/nepaliPatro
 ~/nepaliPatro/patro --check    # prove the dates are right
 ~/nepaliPatro/patro            # open it
 ```
@@ -258,6 +259,10 @@ algorithm and its anchor date, the event schema and cache policy, every CSS
 class, the GTK traps behind several non-obvious lines, the performance data,
 troubleshooting, extension points, and the design decisions with the
 alternatives that were rejected.
+
+## License
+
+[GNU General Public License v3.0](LICENSE).
 
 ## Credits
 
