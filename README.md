@@ -17,6 +17,7 @@ Click your bar clock. Click it again and it's gone.
 <br>
 
 <a href="#install"><img src="https://img.shields.io/badge/GTK-4-4A86CF?logo=gtk&logoColor=white" alt="GTK 4"></a>
+<a href="#install"><img src="https://img.shields.io/badge/Linux-only-blue?logo=linux&logoColor=white" alt="Linux only"></a>
 <a href="#install"><img src="https://img.shields.io/badge/Wayland-layer--shell-FFB300?logo=wayland&logoColor=black" alt="Wayland layer-shell"></a>
 <a href="#install"><img src="https://img.shields.io/badge/pip%20dependencies-none-3776AB?logo=python&logoColor=white" alt="No pip dependencies"></a>
 <a href="#fast-and-measured"><img src="https://img.shields.io/badge/cold%20open-~350%20ms-3ddc84" alt="Cold open ~350 ms"></a>
@@ -65,21 +66,44 @@ flip calendars, `q` to dismiss.
 ever. Festival data caches to disk on first fetch, and nothing blocks on the
 wire: the grid paints instantly, events fill in behind it.
 
+**Works with or without layer-shell.** On a `wlr-layer-shell` compositor it is a
+true bar popup, anchored under waybar and toggled by the same click. On X11, or
+on GNOME which will not implement the protocol, the same window opens as an
+ordinary one and closes when it loses focus.
+
 **No pip packages.** Standard library plus system GTK, which is exactly why the
 version before this one died when Python 3.14 landed.
 
 ## Install
 
-```bash
-sudo pacman -S --needed gtk4 python-gobject gtk4-layer-shell noto-fonts libnotify
+Two things must exist before it will run: **GTK 4** and **PyGObject**. Everything
+else is standard library. `gtk4-layer-shell` is optional and only does anything
+on Wayland.
 
-git clone https://github.com/incogcyberpunk/System-Scripts.git ~/sysScripts
-~/sysScripts/nepaliPatro/patro --check    # prove the dates are right
-~/sysScripts/nepaliPatro/patro            # open it
+<table>
+<tr><th align="left">Distro</th><th align="left">Get the dependencies</th></tr>
+<tr><td>Arch</td><td><code>sudo pacman -S --needed gtk4 python-gobject gtk4-layer-shell noto-fonts libnotify</code></td></tr>
+<tr><td>Fedora</td><td><code>sudo dnf install gtk4 python3-gobject gtk4-layer-shell google-noto-sans-devanagari-fonts libnotify</code></td></tr>
+<tr><td>Debian / Ubuntu</td><td><code>sudo apt install libgtk-4-1 python3-gi gir1.2-gtk4layershell-1.0 fonts-noto-devanagari libnotify-bin</code></td></tr>
+</table>
+
+Then:
+
+```bash
+git clone https://github.com/incogcyberpunk/nepaliPatro.git ~/nepaliPatro
+~/nepaliPatro/patro --check    # prove the dates are right
+~/nepaliPatro/patro            # open it
 ```
 
-Needs a compositor that speaks `wlr-layer-shell`: Hyprland, sway, river, niri.
-GNOME does not implement it.
+**Linux only, deliberately.** The launcher is a shell script, notifications go
+through `notify-send`, paths follow the XDG base directory spec, the desktop
+entry is a freedesktop one, and the anchored-popup behaviour this exists for is a
+Wayland protocol. macOS and Windows are out of scope.
+
+**What layer-shell buys you.** Under Hyprland, sway, river or niri the popup
+anchors to the top edge, holds keyboard focus, and dismisses on a click anywhere
+outside. Without it you get a normal small window your window manager places,
+which closes when you click away from it. Both are dismissed by `q` or `Escape`.
 
 <details>
 <summary><b>Wire it to waybar, Hyprland and your shell</b></summary>
@@ -92,8 +116,8 @@ Clock module in `~/.config/waybar/modules.json`:
 "clock": {
     "format": "{:%H:%M}",
     "tooltip": false,
-    "on-click": "~/sysScripts/nepaliPatro/patro",
-    "on-click-right": "~/sysScripts/nepaliPatro/patro --notify"
+    "on-click": "~/nepaliPatro/patro",
+    "on-click-right": "~/nepaliPatro/patro --notify"
 }
 ```
 
@@ -102,26 +126,28 @@ Clock module in `~/.config/waybar/modules.json`:
 Today's date as a login notification, in `~/.config/hypr/conf/autostart.lua`:
 
 ```lua
-hl.exec_cmd("~/sysScripts/nepaliPatro/patro --notify")
+hl.exec_cmd("~/nepaliPatro/patro --notify")
 ```
 
 A keybind, in `~/.config/hypr/conf/keybindings/appKeybinds.lua`:
 
 ```lua
-hl.bind("SUPER + C", hl.dsp.exec_cmd("~/sysScripts/nepaliPatro/patro"))
+hl.bind("SUPER + C", hl.dsp.exec_cmd("~/nepaliPatro/patro"))
 ```
 
 Shell aliases:
 
 ```bash
-alias nepdate='~/sysScripts/nepaliPatro/patro --today'
-alias patro='~/sysScripts/nepaliPatro/patro'
+alias nepdate='~/nepaliPatro/patro --today'
+alias patro='~/nepaliPatro/patro'
 ```
 
-App launcher entry:
+App launcher entry. `Exec=` takes neither `~` nor variables, so the shipped
+`.desktop` carries a `@PATRO@` placeholder that you substitute once:
 
 ```bash
-ln -sf ~/sysScripts/nepaliPatro/nepaliPatro.desktop ~/.local/share/applications/
+sed "s|@PATRO@|$HOME/nepaliPatro/patro|g" ~/nepaliPatro/nepaliPatro.desktop \
+    > ~/.local/share/applications/nepaliPatro.desktop
 ```
 
 </details>
@@ -154,6 +180,8 @@ $ patro --notify
 ```
 
 `*` marks a holiday. Append `--offline` to any of them to stay off the network.
+`--notify` goes through `notify-send`; without `libnotify` installed it prints the
+same text instead of losing it.
 
 ## Fast, and measured
 
@@ -191,7 +219,9 @@ nepaliPatro selfcheck
   dataset cross-check: 3287 ad/bs pairs across 9 years agree exactly
   events: current month 31 days, upcoming() returned 5 (offline)
   day step: n/p cross month boundaries both ways and stop at the table edge
-ok — today is २६ भाद्र २०८३ / 2026-09-11
+  notify: a missing notify-send returns False instead of raising
+  no display: exits 1 with a message instead of a traceback
+ok — today is २७ भाद्र २०८३ / 2026-09-12
 ```
 
 Every day in the vendored month table round-trips, and 3,287 independently
@@ -207,6 +237,8 @@ other sources.
 - Festival data currently ends at **BS 2083**, around April 2027. Both upstreams
   stop there and publish yearly. When it runs out the calendar keeps working and
   the events pane simply goes quiet.
+- Without layer-shell there is no anchoring: your window manager decides where
+  the window lands, and it keeps its titlebar.
 - Weekend red and holiday red are the same red.
 - The invisible click-catcher swallows the first click you make elsewhere.
 - Every open is a fresh process, hence the 350 ms.
@@ -216,8 +248,9 @@ other sources.
 `patro` dispatches, `app.py` draws, `data.py` converts and fetches,
 `selfcheck.py` proves it, `style.css` themes it.
 
-Two layer surfaces — the calendar and a transparent fullscreen click catcher —
-one D-Bus name carrying the toggle, events cached in `~/.cache/nepaliPatro`, and
+Under layer-shell: two surfaces — the calendar and a transparent fullscreen
+click catcher — and one D-Bus name carrying the toggle. Without it: one ordinary
+window that watches its own focus. Events cached in `~/.cache/nepaliPatro`, and
 your chosen calendar remembered in `~/.config/nepaliPatro/state`.
 
 **[Full reference documentation](docs/REFERENCE.md)** covers the conversion

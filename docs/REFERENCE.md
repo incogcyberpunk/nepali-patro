@@ -1,8 +1,8 @@
 # nepaliPatro — reference documentation
 
-Complete reference for the Bikram Sambat + Gregorian calendar popup in
-`~/sysScripts/nepaliPatro`. For a quick tour, see [README.md](../README.md);
-this document is the full description of how every part works and why.
+Complete reference for the Bikram Sambat + Gregorian calendar popup. For a quick
+tour, see [README.md](../README.md); this document is the full description of
+how every part works and why.
 
 - [1. What it is](#1-what-it-is)
 - [2. Requirements](#2-requirements)
@@ -27,10 +27,21 @@ this document is the full description of how every part works and why.
 
 ## 1. What it is
 
-A popup calendar for Wayland compositors that support the `wlr-layer-shell`
-protocol. It shows the Bikram Sambat (Nepali) calendar and the Gregorian
-calendar, either as the main grid with the other as small secondary numerals in
-each cell, plus a pane listing the next Nepali festivals and holidays.
+A popup calendar showing the Bikram Sambat (Nepali) calendar and the Gregorian
+calendar, either one as the main grid with the other as small secondary numerals
+in each cell, plus a pane listing the next Nepali festivals and holidays.
+
+It runs on Linux with GTK 4 and PyGObject. On a Wayland compositor that
+implements `wlr-layer-shell` it is a real bar popup: anchored, focus-holding,
+dismissed by a click anywhere outside. On X11, or on GNOME which will not
+implement the protocol, the same window opens as an ordinary one and closes when
+it loses focus. That is the **only** conditional behaviour in the app; see
+[§10](#10-window-and-compositor-behaviour).
+
+**Linux only, by choice.** The launcher is a shell script, `--notify` shells out
+to `notify-send`, paths follow the XDG base directory spec, the desktop entry is
+a freedesktop one, and the anchored-popup behaviour this exists for is a Wayland
+protocol. macOS and Windows are out of scope — not merely untested.
 
 It is meant to hang off a status bar clock: one click opens it, another closes
 it. It also works as a plain CLI date tool with no GUI involved.
@@ -42,8 +53,9 @@ Scope boundaries, so expectations are right:
   computation. Nepali festival dates follow the lunar calendar and public
   holidays are decided by government notice, so no offline formula can produce
   them. Date *conversion*, by contrast, is entirely offline and exact.
-- It targets **this machine's setup** (Hyprland + waybar + Catppuccin Mocha),
-  but nothing in it is Hyprland-specific beyond the integration snippets.
+- It was **developed against Hyprland + waybar + Catppuccin Mocha**, which is
+  why that setup gets the best behaviour and the integration snippets. Nothing
+  in the code is Hyprland-specific.
 
 ## 2. Requirements
 
@@ -51,25 +63,26 @@ Scope boundaries, so expectations are right:
 |---|---|---|
 | Python 3.8+ | the app itself | only ever run on CPython 3.14.7; older versions are untested, 3.8 is simply the oldest the syntax allows. **No pip packages at all** |
 | `gtk4` | the UI toolkit | |
-| `python-gobject` | Python bindings for GTK | |
-| `gtk4-layer-shell` | anchors the window as a compositor layer | must be loadable as `libgtk4-layer-shell.so` |
-| A `wlr-layer-shell` compositor | positions the popup over everything | Hyprland, sway, river, niri… |
+| `python-gobject` (PyGObject) | Python bindings for GTK | |
 | A Devanagari font | Nepali text | `noto-fonts` provides Noto Sans Devanagari |
-| `glib2` | `gdbus`, used by the launcher fast path | already a GTK dependency |
-| `libnotify` | `--notify` only | provides `notify-send` |
+| `gtk4-layer-shell` | **optional.** Anchors the window as a compositor layer | Wayland only, loaded as `libgtk4-layer-shell.so`. Absent or unsupported, the app falls back to a normal window |
+| A `wlr-layer-shell` compositor | **optional.** Positions the popup over everything | Hyprland, sway, river, niri… |
+| `glib2` | `gdbus`, the launcher's 8 ms close path | already a GTK dependency |
+| `libnotify` | `--notify` only | provides `notify-send`; without it the CLI prints instead |
 
-On Arch:
+| Distro | Install |
+|---|---|
+| Arch | `sudo pacman -S --needed gtk4 python-gobject gtk4-layer-shell noto-fonts libnotify` |
+| Fedora | `sudo dnf install gtk4 python3-gobject gtk4-layer-shell google-noto-sans-devanagari-fonts libnotify` |
+| Debian/Ubuntu | `sudo apt install libgtk-4-1 python3-gi gir1.2-gtk4layershell-1.0 fonts-noto-devanagari libnotify-bin` |
 
-```bash
-sudo pacman -S --needed gtk4 python-gobject gtk4-layer-shell noto-fonts libnotify
-# gtk4-layer-shell is in extra; nothing here comes from the AUR
-```
+On Arch, `gtk4-layer-shell` is in `extra`; nothing here comes from the AUR.
 
 There is deliberately **no `requirements.txt`**. `data.py` uses only
-`datetime`, `bisect`, `json`, `os`, plus `urllib.request`, `tempfile`,
+`datetime`, `bisect`, `json`, `os`, `sys`, plus `urllib.request`, `tempfile`,
 `argparse` and `subprocess` imported lazily at their call sites; `app.py` adds
-`calendar`, `threading` and the GTK bindings. This was a reaction to the
-previous version breaking when Python 3.14 landed and the `nepali-datetime`
+`calendar`, `threading`, `ctypes` and the GTK bindings. This was a reaction to
+the previous version breaking when Python 3.14 landed and the `nepali-datetime`
 wheel was not yet available for it.
 
 ## 3. Files
@@ -101,13 +114,16 @@ Everything goes through the `patro` launcher.
 | Command | Effect |
 |---|---|
 | `patro` | toggle the popup: opens it, or closes an open one |
-| `patro --today` | print today in BS and AD, e.g. `२६ भाद्र २०८३  ·  Fri 11 Sep 2026` |
+| `patro --today` | print today in BS and AD, e.g. `२७ भाद्र २०८३  ·  Sat 12 Sep 2026` |
 | `patro --upcoming [N]` | print the next `N` days that carry events (default 8) |
-| `patro --notify` | send today's date, and today's events if any, via `notify-send` |
+| `patro --notify` | send today's date, and today's events if any, as a desktop notification |
 | `patro --offline` | as `--today`, but never touch the network |
 | `patro --check` | run `selfcheck.py`; exits non-zero on failure |
 
 `--offline` also composes: `patro --upcoming 5 --offline`.
+
+The launcher is a shell script. It resolves its own directory with `readlink -f`,
+so a symlink into `~/.local/bin` works.
 
 Sample output:
 
@@ -127,6 +143,12 @@ launch is delivered to the first as an `activate` signal, and the handler
 closes the popup instead of opening a second one. The launcher shortcuts this:
 before starting Python at all, it tries to deliver `activate` itself over the
 bus with `gdbus`, which is why closing costs ~8 ms instead of a full start.
+
+**How `--notify` behaves.** `data.notify()` shells out to `notify-send` and
+returns whether it worked. With `libnotify` absent the `OSError` is absorbed,
+`notify()` returns `False`, and the CLI prints the same text to stdout instead.
+Nothing about `--notify` can raise, because losing the date it was asked to
+deliver is the one outcome that is not acceptable.
 
 ## 5. The interface
 
@@ -355,9 +377,11 @@ a moment later, and every launch after that is instant and offline.
 | `~/.config/nepaliPatro/state` | `BS` or `AD` — the calendar you last used | on switching mode |
 | `~/.cache/nepaliPatro/*.json` | upstream event payloads | on a successful fetch |
 
-Both honour `XDG_CONFIG_HOME` / `XDG_CACHE_HOME`. Both are optional: if the
-state file is missing or unreadable the app starts in BS mode, and if the cache
-cannot be written the app still works, it just refetches.
+Both honour `XDG_CONFIG_HOME` / `XDG_CACHE_HOME`, resolved by `data.user_dir()`,
+which exists so the two paths are spelled once rather than inline in both
+modules. Both are optional: if the state file is missing or unreadable the app
+starts in BS mode, and if the cache cannot be written the app still works, it
+just refetches. Nothing is created until something is written.
 
 Nothing else is touched. No dotfiles are modified, no services installed.
 
@@ -366,6 +390,10 @@ Nothing else is touched. No dotfiles are modified, no services installed.
 All appearance lives in `style.css`, loaded at startup and applied at
 `GTK_STYLE_PROVIDER_PRIORITY_APPLICATION`. Colours are declared once as
 `@define-color` at the top, so retheming means editing 14 lines.
+
+The font stack is Devanagari-first, because JetBrainsMono has no Devanagari
+coverage at all: `Noto Sans Devanagari`, then the monospace face, then
+`sans-serif`.
 
 ### Class reference
 
@@ -413,7 +441,27 @@ and lives in `app.py` instead — see [§5](#keyboard).
 
 ## 10. Window and compositor behaviour
 
-### The two layers
+`app.layered()` decides which of the two modes runs, once, after GTK has a
+display. It is true only when the `Gtk4LayerShell` typelib imported, the default
+display is a `GdkWaylandDisplay`, and `LayerShell.is_supported()` agrees. The
+backend is checked before that call because `is_supported()` asserts on a Wayland
+display and prints two `CRITICAL`s when handed an X11 one.
+
+`main()` refuses to go further when there is no display at all. That guard exists
+because the layer-shell probe it replaced covered the case by accident:
+`is_supported()` returns false for a NULL display, so a run with no
+`WAYLAND_DISPLAY` and no `DISPLAY` used to exit 1 with a message, and briefly
+exited 0 after two tracebacks instead. `Gtk.init_check()` is **not** the test —
+this GTK returns `True` from it even when no display could be opened — so the test
+is `Gdk.Display.get_default() is None`, after calling init so that there is
+something to look at.
+
+`libgtk4-layer-shell.so` is loaded with `ctypes` before anything imports `Gdk`,
+because it has to come before `libwayland-client`. That load is skipped outright
+unless `WAYLAND_DISPLAY` is set, and a missing library is caught, so an X11-only
+machine that never installed it imports the app fine.
+
+### Layer-shell mode: the two layers
 
 | Namespace | Geometry | Layer | Keyboard | Purpose |
 |---|---|---|---|---|
@@ -421,6 +469,21 @@ and lives in `app.py` instead — see [§5](#keyboard).
 | `nepaliPatro-dismiss` | fullscreen, fully transparent | `TOP` | `NONE` | catches an outside click |
 
 You can see both with `hyprctl layers | grep nepaliPatro`.
+
+### Fallback mode: one ordinary window
+
+On X11, or on GNOME, there is no layer surface, so:
+
+- the window is a normal non-resizable toplevel, placed by the window manager,
+  and it **keeps its decorations** — with no anchor, the titlebar is the only way
+  to move it;
+- there is no `Dismisser`. A fullscreen transparent toplevel would be a menace,
+  and it is unnecessary: a toplevel has a real `is-active`, so the window
+  watches its own focus and closes when it loses it;
+- `q`, `Escape`, and every other key work identically.
+
+Everything else — the grid, the events pane, the styling, the data — is the same
+code on both paths.
 
 ### Why keyboard mode is `EXCLUSIVE`
 
@@ -430,12 +493,13 @@ focus to whatever it passes over, and the popup used to vanish mid-journey.
 `EXCLUSIVE` holds focus for as long as the popup lives, which also makes the
 keys work immediately.
 
-### Why dismissal is explicit
+### Why dismissal is explicit under layer-shell
 
 A layer-shell surface has no xdg-toplevel, so:
 
 - `notify::is-active` is **never true** for it — using it as a focus signal was
-  the original cause of the vanish-on-approach bug.
+  the original cause of the vanish-on-approach bug. (This is exactly why the
+  fallback window may use it: that one *is* an xdg-toplevel.)
 - Pointer `leave` events proved unreliable in practice.
 
 So dismissal is only ever: `Escape`/`q`, clicking the launcher again, or
@@ -535,6 +599,8 @@ second. It checks:
 | `check_against_dataset` | **3,287** `ad`/`bs` pairs from the sajanm dataset agree with the vendored table exactly, day for day |
 | `check_events` | `upcoming()` is chronological, skips empty days, and `month_events` never returns a day outside its month |
 | `check_day_step` | `n`/`p` cross month boundaries both ways and stop at the table edge — driven through the real `Window.step_day` with a stub, so no display is needed |
+| `check_notify_never_raises` | with `PATH` pointed at an empty directory, standing in for a box with no `libnotify`, `notify()` returns `False` instead of raising |
+| `check_no_display_is_graceful` | run with `WAYLAND_DISPLAY` and `DISPLAY` both stripped, `app.py` exits 1 with a one-line message and no traceback. Runs as a subprocess, because GTK cannot be un-initialised in-process |
 
 Two dataset years are **quarantined** in `check_against_dataset`, with reasons
 in the source:
@@ -549,11 +615,8 @@ The dataset cross-check is skipped with a message if nothing is cached yet.
 
 ## 13. Desktop integration
 
-> **Current state warning.** These edits live in the `feat/nepali-patro-clock`
-> branch of `~/dotfiles`, which is **not merged**. With that repo on `main`, all
-> three entry points point at `~/sysScripts/fetchNepaliDate.sh`, which was
-> deleted — so the waybar click, the login notification and the `nepdate` alias
-> are all dead until the branch is merged and redeployed.
+Every snippet below assumes the repo is at `~/nepaliPatro`. These are Linux
+examples: waybar and Hyprland are the setup this was written against.
 
 ### waybar
 
@@ -563,8 +626,8 @@ In `~/.config/waybar/modules.json`, on the clock module:
 "clock": {
     "format": "{:%H:%M}",
     "tooltip": false,
-    "on-click": "~/sysScripts/nepaliPatro/patro",
-    "on-click-right": "~/sysScripts/nepaliPatro/patro --notify"
+    "on-click": "~/nepaliPatro/patro",
+    "on-click-right": "~/nepaliPatro/patro --notify"
 }
 ```
 
@@ -575,35 +638,36 @@ over the popup.
 
 ```lua
 -- ~/.config/hypr/conf/autostart.lua
-hl.exec_cmd("~/sysScripts/nepaliPatro/patro --notify")
+hl.exec_cmd("~/nepaliPatro/patro --notify")
 ```
 
 A keybind, if you want one — this config keeps them in
 `~/.config/hypr/conf/keybindings/appKeybinds.lua`:
 
 ```lua
-hl.bind("SUPER + C", hl.dsp.exec_cmd("~/sysScripts/nepaliPatro/patro"))
+hl.bind("SUPER + C", hl.dsp.exec_cmd("~/nepaliPatro/patro"))
 ```
 
 ### Shell
 
 ```bash
-alias nepdate='~/sysScripts/nepaliPatro/patro --today'
-alias patro='~/sysScripts/nepaliPatro/patro'
+alias nepdate='~/nepaliPatro/patro --today'
+alias patro='~/nepaliPatro/patro'
 ```
 
 ### Desktop entry
 
 `nepaliPatro.desktop` provides an app-launcher entry plus a "Notify today's
-date" action. Install it by symlink so edits track the repo:
+date" action. `Exec`/`TryExec` must be absolute — desktop files expand neither
+`~` nor variables — so the shipped file carries a `@PATRO@` placeholder rather
+than someone's home directory. Substitute it once:
 
 ```bash
-ln -sf ~/sysScripts/nepaliPatro/nepaliPatro.desktop \
-       ~/.local/share/applications/nepaliPatro.desktop
+sed "s|@PATRO@|$HOME/nepaliPatro/patro|g" ~/nepaliPatro/nepaliPatro.desktop \
+    > ~/.local/share/applications/nepaliPatro.desktop
 ```
 
-Note that `Exec`/`TryExec` are absolute paths — desktop files do not expand
-`~`. Moving the repo means editing them.
+This is a copy, not a symlink, so re-run it if you move the repo.
 
 ## 14. Limits and expiry dates
 
@@ -635,22 +699,42 @@ Smaller known warts:
 - Every open costs ~350 ms because it is a fresh process. See
   [§11](#11-performance).
 
+Platform-specific, all in the fallback path ([§10](#10-window-and-compositor-behaviour)):
+
+- **No anchoring.** Without layer-shell the window manager places the window
+  wherever it likes; it cannot sit under a bar clock by geometry.
+- **The titlebar stays**, deliberately: with no anchor it is the only way to move
+  the window.
+- **Transparency is the compositor's business.** `window.patro` is transparent so
+  the frame's rounded corners show; on X11 with no compositor running, the
+  corners fall back to whatever is behind them.
+- **Only Linux is supported**, by choice. See [§1](#1-what-it-is).
+
 ## 15. Troubleshooting
 
 **Nothing appears when I click the clock.**
 Check for a stale instance: `pgrep -af "[a]pp.py"`. Because the app is
 single-instance, a leftover process makes your click a *close* rather than an
-open; the next click will open it. `pkill -f "[a]pp.py"` clears it. Also
-confirm the file exists — if `~/sysScripts` is on a branch without
-`nepaliPatro/`, the launcher path is simply gone.
+open; the next click will open it. `pkill -f "[a]pp.py"` clears it.
 
-**"compositor does not support the layer-shell protocol"**
-The compositor lacks `wlr-layer-shell`. GNOME does not implement it.
+**The window is not anchored to the bar, and it has a titlebar.**
+That is the fallback path: no `wlr-layer-shell`, so no layer surface. GNOME will
+not implement the protocol, and X11 has no equivalent. On Wayland, confirm the
+library is installed and importable:
+`python3 -c "import gi; gi.require_version('Gtk4LayerShell','1.0')"`.
 
 **Devanagari renders as boxes or with broken conjuncts.**
 Install a Devanagari font (`noto-fonts`) and check `fc-list | grep -i devanagari`.
 Tooltips are separate surfaces and do not inherit the frame's font rule, which
 is why `style.css` has an explicit `tooltip, tooltip label` rule.
+
+**`patro --notify` prints instead of notifying.**
+`notify()` returned `False`, meaning `notify-send` never ran. Install `libnotify`.
+
+**`no display: neither WAYLAND_DISPLAY nor DISPLAY is set`**
+The app was run outside a graphical session — from a TTY, a cron job, or an ssh
+shell. The CLI subcommands (`--today`, `--upcoming`, `--notify`, `--check`) all
+work there; only the popup needs a display.
 
 **An opaque rectangle sits behind the popup, or the screen dims.**
 Something re-added GTK's `.background` class, or a rule in `style.css` lost to
@@ -664,9 +748,9 @@ Intel-only machine, so the probe could only fail. Harmless either way, and the
 launcher pins cairo regardless.
 
 **Events are missing or stale.**
-`rm -rf ~/.cache/nepaliPatro` and reopen; the app refetches. If a BS year is
-past the upstream horizon there is nothing to fetch — see
-[§14](#14-limits-and-expiry-dates).
+Delete the cache directory for your OS ([§8](#8-files-written-on-disk)) and
+reopen; the app refetches. If a BS year is past the upstream horizon there is
+nothing to fetch — see [§14](#14-limits-and-expiry-dates).
 
 **The popup closes the instant I click something else.**
 That is the catcher layer working as designed. See
@@ -719,6 +803,26 @@ the oracle that validates the vendored table.
 **Explicit dismissal.** `notify::is-active` and pointer-leave were both tried
 and both failed for layer surfaces; see
 [§10](#10-window-and-compositor-behaviour).
+
+**Layer-shell as an enhancement, not a requirement.** The alternative was to
+keep exiting with "compositor does not support the layer-shell protocol", which
+made a working calendar unusable on GNOME and on X11 for the sake of window
+placement. Now the protocol is detected and the window degrades to an ordinary
+toplevel that closes on focus loss. Rejected: reimplementing anchoring per
+platform (there is no portable way to place a window under a bar that does not
+exist), and shipping two apps.
+
+**Linux only.** macOS and Windows were both considered and dropped. Between them
+they wanted a second launcher, two more notifier backends, `~/Library` and
+`%LOCALAPPDATA%` path branches, three more fonts in the stack, and platforms that
+could not be tested here — all to run a calendar designed to hang off a Wayland
+bar. What survives is the part Linux itself needs: X11 and GNOME have no
+layer-shell either, so the fallback window is not a portability concession.
+
+**Decorations kept in the fallback.** An undecorated popup looks better, but
+without an anchor the window lands wherever the WM puts it, and then the titlebar
+is the only way to move it — plus a way out if focus-loss dismissal ever
+misbehaves. Correct beat pretty.
 
 **A segmented `ने`/`EN` slider.** A single toggle button naming the destination
 was rejected as misleading — it was unclear whether the label meant the current
