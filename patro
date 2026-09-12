@@ -6,7 +6,7 @@
 #   patro --notify        send today's date as a notification
 set -euo pipefail
 
-here="$(dirname "$(readlink -f "$0")")"
+here="$(dirname -- "$(readlink -f -- "$0")")"
 
 case "${1:-}" in
     --today | --upcoming | --notify | --offline)

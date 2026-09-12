@@ -14,6 +14,26 @@ import sys
 import data
 
 
+def check_no_display_is_graceful():
+    """With no display, app.py must say so and exit 1, not dump a traceback.
+
+    The layer-shell probe this replaced happened to cover the case, so losing it
+    was a regression once. A subprocess with the display variables stripped is
+    the only way to test it: GTK cannot be un-initialised in-process.
+    """
+    import subprocess
+
+    here = os.path.dirname(os.path.abspath(__file__))
+    environment = {key: value for key, value in os.environ.items()
+                   if key not in ("WAYLAND_DISPLAY", "DISPLAY")}
+    result = subprocess.run([sys.executable, os.path.join(here, "app.py")],
+                            capture_output=True, text=True, env=environment)
+    assert result.returncode == 1, f"expected exit 1, got {result.returncode}"
+    assert "no display" in result.stderr, f"unhelpful stderr: {result.stderr!r}"
+    assert "Traceback" not in result.stderr, "a traceback reached the user"
+    print("  no display: exits 1 with a message instead of a traceback")
+
+
 def check_notify_never_raises():
     """--notify must degrade to a return value, never an exception.
 
@@ -166,7 +186,8 @@ def main():
     print("nepaliPatro selfcheck")
     for check in (check_table, check_anchor, check_roundtrip, check_grid,
                   check_out_of_range, check_against_dataset, check_events,
-                  check_day_step, check_notify_never_raises):
+                  check_day_step, check_notify_never_raises,
+                  check_no_display_is_graceful):
         check()
     print(f"ok — today is {data.format_bs(data.today_bs())} "
           f"/ {datetime.date.today().isoformat()}")

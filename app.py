@@ -1,46 +1,72 @@
 #!/usr/bin/env python3
-"""nepaliPatro - Bikram Sambat + Gregorian calendar popup for Wayland.
+"""nepaliPatro - Bikram Sambat + Gregorian calendar popup.
 
-A gtk4-layer-shell surface anchored under waybar. Launch it again while it is
-open and it closes, so a single waybar click can toggle it.
+Under a wlr-layer-shell compositor it is a layer surface anchored under the bar:
+launch it again while it is open and it closes, so one waybar click toggles it.
+Without that protocol - X11, or GNOME, which will not implement it - the same
+window opens as an ordinary one and closes when it loses focus.
 
-Dismiss: Escape or q, a click anywhere outside it, or clicking the launcher again.
+Dismiss: Escape or q, a click outside it, or clicking the launcher again.
 Moving the pointer away deliberately does not close it.
 Keys: Escape/q close · Left/Right or h/l month · n/p day · t today · m switch calendar
 """
 
+import os
+import sys
 from ctypes import CDLL
 
 # gtk4-layer-shell must be loaded before libwayland-client, and GI pulls in
-# libwayland as soon as Gdk is imported. See gtk4-layer-shell/linking.md.
-CDLL("libgtk4-layer-shell.so")
+# libwayland as soon as Gdk is imported, so this cannot wait. See
+# gtk4-layer-shell/linking.md. An X11 session need not have the library at all,
+# so a failed load is not fatal: the plain window path takes over.
+if os.environ.get("WAYLAND_DISPLAY"):
+    try:
+        CDLL("libgtk4-layer-shell.so")
+    except OSError:
+        pass
 
 import calendar  # noqa: E402
 import datetime  # noqa: E402
-import os  # noqa: E402
-import sys  # noqa: E402
 import threading  # noqa: E402
 
 import gi  # noqa: E402
 
 gi.require_version("Gdk", "4.0")
 gi.require_version("Gtk", "4.0")
-gi.require_version("Gtk4LayerShell", "1.0")
 from gi.repository import Gdk, Gio, GLib, Gtk  # noqa: E402
-from gi.repository import Gtk4LayerShell as LayerShell  # noqa: E402
+
+try:
+    gi.require_version("Gtk4LayerShell", "1.0")
+    from gi.repository import Gtk4LayerShell as LayerShell  # noqa: E402
+except (ValueError, ImportError):
+    LayerShell = None
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import data  # noqa: E402
 
 APP_ID = "np.nepaliPatro"
 HERE = os.path.dirname(os.path.abspath(__file__))
-STATE_FILE = os.path.join(
-    os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")),
-    "nepaliPatro", "state",
-)
+STATE_FILE = os.path.join(data.user_dir("config"), "state")
 MARGIN_TOP = 6           # clears waybar
 UPCOMING = 8             # rows in the events pane
 WEEKEND = (0, 6)         # Sunday and Saturday are both holidays in Nepal
+
+
+def layered() -> bool:
+    """Is a layer surface possible here? Needs a display, so call after startup.
+
+    False on X11 and on GNOME, which refuses to implement wlr-layer-shell. The
+    popup then opens as a normal window instead of failing.
+
+    The backend is checked before is_supported() because that function asserts
+    on a Wayland display and prints two CRITICALs when handed an X11 one.
+    """
+    display = Gdk.Display.get_default()
+    if LayerShell is None or display is None:
+        return False
+    if not display.__gtype__.name.startswith("GdkWayland"):
+        return False
+    return LayerShell.is_supported()
 
 
 def load_mode() -> str:
@@ -67,17 +93,26 @@ class Window(Gtk.ApplicationWindow):
         self.add_css_class("patro")
         self.set_default_size(430, -1)
 
-        LayerShell.init_for_window(self)
-        LayerShell.set_namespace(self, "nepaliPatro")
-        LayerShell.set_layer(self, LayerShell.Layer.TOP)
-        LayerShell.set_anchor(self, LayerShell.Edge.TOP, True)
-        LayerShell.set_margin(self, LayerShell.Edge.TOP, MARGIN_TOP)
-        # EXCLUSIVE, not ON_DEMAND: with focus_follows_mouse the pointer crosses
-        # other windows on its way down from the bar, and an ON_DEMAND surface
-        # loses keyboard focus to whatever it passes over, which used to dismiss
-        # the popup mid-travel. Holding focus also makes Escape and the arrow
-        # keys work without clicking the popup first.
-        LayerShell.set_keyboard_mode(self, LayerShell.KeyboardMode.EXCLUSIVE)
+        if layered():
+            LayerShell.init_for_window(self)
+            LayerShell.set_namespace(self, "nepaliPatro")
+            LayerShell.set_layer(self, LayerShell.Layer.TOP)
+            LayerShell.set_anchor(self, LayerShell.Edge.TOP, True)
+            LayerShell.set_margin(self, LayerShell.Edge.TOP, MARGIN_TOP)
+            # EXCLUSIVE, not ON_DEMAND: with focus_follows_mouse the pointer
+            # crosses other windows on its way down from the bar, and an
+            # ON_DEMAND surface loses keyboard focus to whatever it passes over,
+            # which used to dismiss the popup mid-travel. Holding focus also
+            # makes Escape and the arrow keys work without clicking first.
+            LayerShell.set_keyboard_mode(self, LayerShell.KeyboardMode.EXCLUSIVE)
+        else:
+            # No layer shell: an ordinary toplevel, placed by the window manager.
+            # is-active is a real signal for a toplevel (it is not for a layer
+            # surface, see Dismisser), so losing focus is the dismissal here and
+            # no click catcher is needed. Decorations stay: without an anchor
+            # the titlebar is the only way to move the window.
+            self.set_resizable(False)
+            self.connect("notify::is-active", self._close_when_inactive)
 
         self.today_ad = datetime.date.today()
         self.today_bs = data.bs_from_ad(self.today_ad)
@@ -111,6 +146,10 @@ class Window(Gtk.ApplicationWindow):
     def _drop_initial_focus(self):
         self.set_focus(None)
         return GLib.SOURCE_REMOVE
+
+    def _close_when_inactive(self, *_args):
+        if not self.is_active():
+            self.close()
 
     # --- layout ---------------------------------------------------------
 
@@ -511,7 +550,9 @@ class Dismisser(Gtk.ApplicationWindow):
     """Invisible fullscreen layer under the popup: a click on it dismisses.
 
     This is how dropdowns behave everywhere, and unlike focus or hover it is a
-    signal the compositor delivers reliably.
+    signal the compositor delivers reliably. Layer shell only: without it a
+    fullscreen transparent toplevel would be a menace, and it is not needed
+    because a toplevel can just watch its own focus.
     """
 
     def __init__(self, app):
@@ -559,10 +600,11 @@ class Patro(Gtk.Application):
         if getattr(self, "popup", None) is not None:  # launched again: toggle off
             self.dismiss()
             return
-        # Map the catcher first so the popup ends up above it.
-        self.catcher = Dismisser(self)
-        self.catcher.on_dismiss = self.dismiss
-        self.catcher.present()
+        if layered():
+            # Map the catcher first so the popup ends up above it.
+            self.catcher = Dismisser(self)
+            self.catcher.on_dismiss = self.dismiss
+            self.catcher.present()
         self.popup = Window(self)
         self.popup.connect("close-request", self.on_popup_closed)
         self.popup.present()
@@ -580,8 +622,18 @@ class Patro(Gtk.Application):
 
 
 def main() -> int:
-    if not LayerShell.is_supported():
-        print("compositor does not support the layer-shell protocol", file=sys.stderr)
+    # Without this, a run with no DISPLAY and no WAYLAND_DISPLAY reaches GTK and
+    # dies with two tracebacks: a NULL GdkDisplay in do_startup, then a failed
+    # Gtk init in the Window constructor. The old layer-shell probe used to catch
+    # this case by accident, since it returns false for a NULL display.
+    #
+    # init_check() is not the test: this GTK returns True from it even when no
+    # display could be opened. The display itself is the only honest signal, and
+    # it stays None until something has initialised GTK, hence the call first.
+    Gtk.init_check()
+    if Gdk.Display.get_default() is None:
+        print("no display: neither WAYLAND_DISPLAY nor DISPLAY is set",
+              file=sys.stderr)
         return 1
     return Patro().run(sys.argv)
 
