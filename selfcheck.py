@@ -8,9 +8,28 @@ cannot survive this.
 """
 
 import datetime
+import os
 import sys
 
 import data
+
+
+def check_notify_never_raises():
+    """--notify must degrade to a return value, never an exception.
+
+    An empty PATH stands in for a box with no libnotify installed: subprocess
+    raises OSError and notify() has to absorb it, or the date is lost.
+    """
+    import tempfile
+
+    real = os.environ.get("PATH", "")
+    with tempfile.TemporaryDirectory() as empty:
+        os.environ["PATH"] = empty
+        try:
+            assert data.notify("t", "b\nsecond line") is False
+        finally:
+            os.environ["PATH"] = real
+    print("  notify: a missing notify-send returns False instead of raising")
 
 
 def check_table():
@@ -147,7 +166,7 @@ def main():
     print("nepaliPatro selfcheck")
     for check in (check_table, check_anchor, check_roundtrip, check_grid,
                   check_out_of_range, check_against_dataset, check_events,
-                  check_day_step):
+                  check_day_step, check_notify_never_raises):
         check()
     print(f"ok — today is {data.format_bs(data.today_bs())} "
           f"/ {datetime.date.today().isoformat()}")

@@ -257,9 +257,19 @@ def format_bs(bs: tuple[int, int, int], nepali: bool = True) -> str:
 
 # --- events ---------------------------------------------------------------
 
-CACHE_DIR = os.path.join(
-    os.environ.get("XDG_CACHE_HOME", os.path.expanduser("~/.cache")), "nepaliPatro"
-)
+def user_dir(kind: str) -> str:
+    """The XDG 'cache' or 'config' directory for this app.
+
+    One helper for both, because app.py needs the config path and this module
+    the cache one. Nothing here is created; callers makedirs when they write.
+    """
+    variable = "XDG_CACHE_HOME" if kind == "cache" else "XDG_CONFIG_HOME"
+    default = ".cache" if kind == "cache" else ".config"
+    root = os.environ.get(variable) or os.path.expanduser(f"~/{default}")
+    return os.path.join(root, "nepaliPatro")
+
+
+CACHE_DIR = user_dir("cache")
 _S4NKALP = "https://raw.githubusercontent.com/S4NKALP/nepali-calendar-api/main/data/{year}/{month}.json"
 _SAJANM = "https://raw.githubusercontent.com/sajanm/nepali-lunar-calendar-events/master/{year}.json"
 TIMEOUT = 4
@@ -425,6 +435,21 @@ def upcoming(count: int = 8, offline: bool = False, start: datetime.date | None 
 
 # --- cli ------------------------------------------------------------------
 
+def notify(summary: str, body: str) -> bool:
+    """Send a desktop notification. False if notify-send is not installed.
+
+    Returning rather than raising is the point: --notify must never lose the
+    date it was asked to deliver, so the caller prints it instead.
+    """
+    import subprocess
+
+    try:
+        return subprocess.run(["notify-send", summary, body],
+                              check=False).returncode == 0
+    except OSError:
+        return False
+
+
 def _today_line() -> str:
     ad = datetime.date.today()
     bs = bs_from_ad(ad)
@@ -443,13 +468,12 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.notify:
-        import subprocess
-
         body = _today_line()
         events = upcoming(1, offline=args.offline)
         if events and events[0]["in_days"] == 0:
             body += "\n" + ", ".join(events[0]["events"])
-        subprocess.run(["notify-send", "आजको मिति", body], check=False)
+        if not notify("आजको मिति", body):
+            print(body)  # no notifier installed: the text is still the point
         return
 
     if args.upcoming is not None:
